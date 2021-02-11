@@ -55,7 +55,7 @@ deploy-ecs-service:
 		--no-fail-on-empty-changeset
 
 push-docker-images:
-	aws --profile $(profile) ecr get-login-password --region $(region) | docker login --username AWS --password-stdin $(account).dkr.ecr.ap-northeast-1.amazonaws.com
+	aws --profile $(profile) ecr get-login-password --region $(region) | docker login --username AWS --password-stdin $(account).dkr.ecr.$(region).amazonaws.com
 	docker build -t ecs-blue-green-demo/php-fpm -f aws/ecs/app-service/app/Dockerfile .
 	docker tag ecs-blue-green-demo/php-fpm:latest $(account).dkr.ecr.$(region).amazonaws.com/ecs-blue-green-demo/php-fpm:latest
 	docker push $(account).dkr.ecr.$(region).amazonaws.com/ecs-blue-green-demo/php-fpm:latest
@@ -90,31 +90,3 @@ deploy-code-deploy-group:
 	aws --profile $(profile) deploy create-deployment-group \
 		--cli-input-json file://codedeploy-group.json
 	rm -f codedeploy-group.json
-
-deploy-all:
-	make deploy-vpc-subnet profile=$(profile)
-	make deploy-nat-instance profile=$(profile)
-	make deploy-network profile=$(profile)
-	make deploy-security-group profile=$(profile)
-	make deploy-load-balancer profile=$(profile)
-	make deploy-ecs-cluster profile=$(profile)
-	make deploy-ecs-ecr profile=$(profile)
-	make deploy-ecs-service profile=$(profile)
-
-delete-all:
-	aws --profile $(profile) cloudformation delete-stack \
-		--stack-name ecs-blue-green-demo-ecs-service
-	aws --profile $(profile) cloudformation delete-stack \
-		--stack-name ecs-blue-green-demo-ecs-ecr
-	aws --profile $(profile) cloudformation delete-stack \
-		--stack-name ecs-blue-green-demo-ecs-cluster
-	aws --profile $(profile) cloudformation delete-stack \
-		--stack-name ecs-blue-green-demo-load-balancer
-	aws --profile $(profile) cloudformation delete-stack \
-		--stack-name ecs-blue-green-demo-security-group
-	aws --profile $(profile) cloudformation delete-stack \
-		--stack-name ecs-blue-green-demo-network
-	aws --profile $(profile) cloudformation delete-stack \
-		--stack-name ecs-blue-green-demo-nat-instance
-	aws --profile $(profile) cloudformation delete-stack \
-		--stack-name ecs-blue-green-demo-vpc-subnet
