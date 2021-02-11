@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackFamily:
+    Type: String
+    Default: ecs-blue-green-demo
+
+Resources:
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Load balancer security group
+      GroupName: lb
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${StackFamily}-vpc"
+      SecurityGroupIngress:
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+  ApplicationSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Application security group
+      GroupName: app
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${StackFamily}-vpc"
+      SecurityGroupIngress:
+        -
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+  InternalSecurityGroupIngressForHttp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ApplicationSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref ApplicationSecurityGroup
+  InternalSecurityGroupIngressForHttps:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ApplicationSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref ApplicationSecurityGroup
+
+Outputs:
+  LoadBalancerSecurityGroup:
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: !Sub "${StackFamily}-lb-sg"
+  ApplicationSecurityGroup:
+    Value: !Ref ApplicationSecurityGroup
+    Export:
+      Name: !Sub "${StackFamily}-app-sg"

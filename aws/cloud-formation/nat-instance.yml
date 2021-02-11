@@ -1,0 +1,168 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackFamily:
+    Type: String
+    Default: ecs-blue-green-demo
+  NatInstanceAmiId:
+    Type: AWS::EC2::Image::Id
+    Default: ami-00d29e4cb217ae06b
+  NatInstanceInstanceType:
+    Type: String
+    Default: t3a.nano
+  AvailabilityZone1a:
+    Type: String
+    Default: ap-northeast-1a
+  AvailabilityZone1d:
+    Type: String
+    Default: ap-northeast-1d
+
+Resources:
+  NatSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: nat
+      GroupDescription: NAT security group
+      SecurityGroupIngress:
+        - CidrIp:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-cidr-private-1a"
+          Description: HTTP
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-cidr-private-1d"
+          Description: HTTP
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-cidr-private-1a"
+          Description: HTTPS
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIp:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-cidr-private-1d"
+          Description: HTTPS
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIp:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-cidr-private-1a"
+          Description: SMTP
+          FromPort: 587
+          IpProtocol: tcp
+          ToPort: 587
+        - CidrIp:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-cidr-private-1d"
+          Description: SMTP
+          FromPort: 587
+          IpProtocol: tcp
+          ToPort: 587
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: HTTP
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          Description: HTTPS
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+        - CidrIp: 0.0.0.0/0
+          Description: SMTP
+          FromPort: 587
+          IpProtocol: tcp
+          ToPort: 587
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${StackFamily}-vpc"
+
+  NatInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [!Ref NatInstanceRole]
+    DependsOn:
+      - NatInstanceRole
+
+  NatInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ec2.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: allow-modify-instance-attribute
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:ModifyInstanceAttribute'
+                Resource: '*'
+
+  NatInstance1a:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone1a
+      IamInstanceProfile: !Ref NatInstanceProfile
+      ImageId: !Ref NatInstanceAmiId
+      InstanceType: !Ref NatInstanceInstanceType
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet:
+            - !Ref NatSecurityGroup
+          SubnetId:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-public-subnet-1a"
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: nat-instance-1a
+        - Key: Group
+          Value: NAT
+
+  NatInstance1d:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone1d
+      IamInstanceProfile: !Ref NatInstanceProfile
+      ImageId: !Ref NatInstanceAmiId
+      InstanceType: !Ref NatInstanceInstanceType
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet:
+            - !Ref NatSecurityGroup
+          SubnetId:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-public-subnet-1d"
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: nat-instance-1d
+        - Key: Group
+          Value: NAT
+
+Outputs:
+  NatInstance1a:
+    Value: !Ref NatInstance1a
+    Export:
+      Name: !Sub "${StackFamily}-nat-instance-1a"
+  NatInstance1d:
+    Value: !Ref NatInstance1d
+    Export:
+      Name: !Sub "${StackFamily}-nat-instance-1d"

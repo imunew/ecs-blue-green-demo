@@ -1,0 +1,83 @@
+{
+  "family": "ecs-blue-green-demo-app",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "2048",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/ecs-blue-green-demo-ecs-execution",
+  "taskRoleArn": "arn:aws:iam::<AWS_ACCOUNT_ID>:role/ecs-blue-green-demo-ecs-task",
+  "volumes": [
+    {
+      "name": "uds",
+      "host": {}
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "name": "nginx",
+      "image": "<AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/ecs-blue-green-demo/nginx:<IMAGE_TAG>",
+      "essential": true,
+      "portMappings": [
+        {
+          "protocol": "tcp",
+          "containerPort": 80
+        }
+      ],
+      "ulimits": [
+        {
+          "name": "nofile",
+          "softLimit": 65536,
+          "hardLimit": 65536
+        }
+      ],
+      "memory": 1024,
+      "mountPoints": [
+        {
+          "sourceVolume": "uds",
+          "containerPath": "/var/run"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "ecs-blue-green-demo-app",
+          "awslogs-region": "<AWS_REGION>",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    },
+    {
+      "name": "php-fpm",
+      "image": "<AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/ecs-blue-green-demo/php-fpm:<IMAGE_TAG>",
+      "essential": true,
+      "ulimits": [
+        {
+          "name": "nofile",
+          "softLimit": 65536,
+          "hardLimit": 65536
+        }
+      ],
+      "memory": 2048,
+      "mountPoints": [
+        {
+          "sourceVolume": "uds",
+          "containerPath": "/var/run"
+        }
+      ],
+      "environment": [
+      ],
+      "secrets": [
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "ecs-blue-green-demo-app",
+          "awslogs-region": "<AWS_REGION>",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackFamily:
+    Type: String
+    Default: ecs-blue-green-demo
+  EcsDesiredCount:
+    Type: Number
+    Default: 1
+  EcsCpu:
+    Type: Number
+    Default: 512
+  TaskMemory:
+    Type: Number
+    Default: 2048
+  NginxMemory:
+    Type: Number
+    Default: 512
+  PhpFpmMemory:
+    Type: Number
+    Default: 1536
+
+Transform:
+  - 'AWS::CodeDeployBlueGreen'
+
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${StackFamily}-app"
+      RetentionInDays: 14
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      RoleName: !Sub "${StackFamily}-ecs-execution"
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      RoleName: !Sub "${StackFamily}-ecs-task"
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${StackFamily}-app"
+      Memory: !Ref TaskMemory
+      ExecutionRoleArn: !Ref ExecutionRole
+      TaskRoleArn: !Ref TaskRole
+      NetworkMode: awsvpc
+      Volumes:
+        - Host: {}
+          Name: uds
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref EcsCpu
+      ContainerDefinitions:
+        - Name: nginx
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StackFamily}/nginx:latest
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "${StackFamily}-app"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+              Protocol: tcp
+          Ulimits:
+            - Name: nofile
+              SoftLimit: 65536
+              HardLimit: 65536
+          MountPoints:
+            - SourceVolume: uds
+              ContainerPath: /var/run
+          Memory: !Ref NginxMemory
+        - Name: php-fpm
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${StackFamily}/php-fpm:latest
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "${StackFamily}-app"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+          Ulimits:
+            - Name: nofile
+              SoftLimit: 65536
+              HardLimit: 65536
+          MountPoints:
+            - SourceVolume: uds
+              ContainerPath: /var/run
+          Memory: !Ref PhpFpmMemory
+
+  EcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:
+        Fn::ImportValue:
+          !Sub "${StackFamily}-ecs-cluster"
+      LaunchType: FARGATE
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref EcsDesiredCount
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - Fn::ImportValue:
+                !Sub "${StackFamily}-private-subnet-1a"
+            - Fn::ImportValue:
+                !Sub "${StackFamily}-private-subnet-1d"
+          SecurityGroups:
+            - Fn::ImportValue:
+                !Sub "${StackFamily}-app-sg"
+      LoadBalancers:
+        - ContainerName: nginx
+          ContainerPort: 80
+          TargetGroupArn:
+            Fn::ImportValue:
+              !Sub "${StackFamily}-target-group-blue"
+      HealthCheckGracePeriodSeconds: 30
+      ServiceName: !Sub "${StackFamily}-app"
+      DeploymentController:
+        Type: CODE_DEPLOY
+      SchedulingStrategy: "REPLICA"

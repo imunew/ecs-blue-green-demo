@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackFamily:
+    Type: String
+    Default: ecs-blue-green-demo
+
+Resources:
+  TargetGroupBlue:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      TargetType: ip
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${StackFamily}-vpc"
+      HealthCheckPath: /healthcheck
+      Name: !Sub "${StackFamily}-tg-blue"
+
+  TargetGroupGreen:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      TargetType: ip
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${StackFamily}-vpc"
+      HealthCheckPath: /healthcheck
+      Name: !Sub "${StackFamily}-tg-green"
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${StackFamily}-app"
+      SecurityGroups:
+        - Fn::ImportValue:
+            !Sub "${StackFamily}-lb-sg"
+      Subnets:
+        - Fn::ImportValue:
+            !Sub "${StackFamily}-public-subnet-1a"
+        - Fn::ImportValue:
+            !Sub "${StackFamily}-public-subnet-1d"
+
+  ListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupBlue
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+    DependsOn:
+      - TargetGroupBlue
+      - LoadBalancer
+
+Outputs:
+  TargetGroupBlue:
+    Value: !Ref TargetGroupBlue
+    Export:
+      Name: !Sub "${StackFamily}-target-group-blue"
+  TargetGroupGreen:
+    Value: !Ref TargetGroupGreen
+    Export:
+      Name: !Sub "${StackFamily}-target-group-green"
+  LoadBalancer:
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: !Sub "${StackFamily}-lb-dns"

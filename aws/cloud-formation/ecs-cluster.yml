@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackFamily:
+    Type: String
+    Default: ecs-blue-green-demo
+
+Resources:
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref StackFamily
+
+Outputs:
+  EcsCluster:
+    Value: !Ref EcsCluster
+    Export:
+      Name: !Sub "${StackFamily}-ecs-cluster"

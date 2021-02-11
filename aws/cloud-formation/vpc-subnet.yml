@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackFamily:
+    Type: String
+    Default: ecs-blue-green-demo
+  VpcCidrBlock:
+    Type: String
+    Default: 10.0.0.0/16
+  SubnetCidrBlockPrivate1a:
+    Type: String
+    Default: 10.0.1.0/24
+  SubnetCidrBlockPrivate1d:
+    Type: String
+    Default: 10.0.2.0/24
+  SubnetCidrBlockPublic1a:
+    Type: String
+    Default: 10.0.3.0/24
+  SubnetCidrBlockPublic1d:
+    Type: String
+    Default: 10.0.4.0/24
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackFamily}-vpc"
+
+  PrivateSubnet1a:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: 'ap-northeast-1a'
+      CidrBlock: !Ref SubnetCidrBlockPrivate1a
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackFamily}-private-subnet-1a"
+
+  PrivateSubnet1d:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: 'ap-northeast-1d'
+      CidrBlock: !Ref SubnetCidrBlockPrivate1d
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackFamily}-private-subnet-1d"
+
+  PublicSubnet1a:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: 'ap-northeast-1a'
+      CidrBlock: !Ref SubnetCidrBlockPublic1a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackFamily}-public-subnet-1a"
+
+  PublicSubnet1d:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: 'ap-northeast-1d'
+      CidrBlock: !Ref SubnetCidrBlockPublic1d
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackFamily}-public-subnet-1d"
+
+Outputs:
+  VPC:
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub "${StackFamily}-vpc"
+  PrivateSubnet1a:
+    Value: !Ref PrivateSubnet1a
+    Export:
+      Name: !Sub "${StackFamily}-private-subnet-1a"
+  PrivateSubnet1d:
+    Value: !Ref PrivateSubnet1d
+    Export:
+      Name: !Sub "${StackFamily}-private-subnet-1d"
+  PublicSubnet1a:
+    Value: !Ref PublicSubnet1a
+    Export:
+      Name: !Sub "${StackFamily}-public-subnet-1a"
+  PublicSubnet1d:
+    Value: !Ref PublicSubnet1d
+    Export:
+      Name: !Sub "${StackFamily}-public-subnet-1d"
+  SubnetCidrBlockPrivate1a:
+    Value: !Ref SubnetCidrBlockPrivate1a
+    Export:
+      Name: !Sub "${StackFamily}-cidr-private-1a"
+  SubnetCidrBlockPrivate1d:
+    Value: !Ref SubnetCidrBlockPrivate1d
+    Export:
+      Name: !Sub "${StackFamily}-cidr-private-1d"
+  SubnetCidrBlockPublic1a:
+    Value: !Ref SubnetCidrBlockPublic1a
+    Export:
+      Name: !Sub "${StackFamily}-cidr-public-1a"
+  SubnetCidrBlockPublic1d:
+    Value: !Ref SubnetCidrBlockPublic1d
+    Export:
+      Name: !Sub "${StackFamily}-cidr-public-1d"

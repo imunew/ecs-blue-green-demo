@@ -1,0 +1,26 @@
+version: "3"
+
+services:
+  php-fpm:
+    build:
+      context: .
+      dockerfile: ./local/docker/php-fpm/Dockerfile
+    volumes:
+      - ./app:/var/www/app:cached
+      - ./local/docker/app/etc/zz-www.conf:/usr/local/etc/php-fpm.d/zz-www.conf
+      - uds:/var/run
+    working_dir: /var/www/app
+
+  nginx:
+    image: nginx
+    ports:
+      - 8000:80
+    volumes:
+      - ./app:/var/www/app:cached
+      - ./local/docker/nginx/etc/nginx.conf:/etc/nginx/nginx.conf
+      - uds:/var/run
+    depends_on:
+      - php-fpm
+
+volumes:
+  uds:

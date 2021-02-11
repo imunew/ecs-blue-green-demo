@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  StackFamily:
+    Type: String
+    Default: ecs-blue-green-demo
+
+Resources:
+  EcrNginx:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${StackFamily}/nginx"
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Delete more than 20 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 20
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  EcrPhpFpm:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${StackFamily}/php-fpm"
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Delete more than 20 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 20
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+Outputs:
+  EcrNginx:
+    Value: !Ref EcrNginx
+    Export:
+      Name: !Sub "${StackFamily}-ecr-nginx"
+  EcrPhpFpm:
+    Value: !Ref EcrPhpFpm
+    Export:
+      Name: !Sub "${StackFamily}-ecr-php-fpm"
