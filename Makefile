@@ -1,86 +1,97 @@
+stack-family=ecs-blue-green-demo
+
 deploy-vpc-subnet:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/vpc-subnet.yml \
-		--stack-name ecs-blue-green-demo-vpc-subnet \
+		--stack-name $(stack-family)-vpc-subnet \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-nat-instance:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/nat-instance.yml \
-		--stack-name ecs-blue-green-demo-nat-instance \
+		--stack-name $(stack-family)-nat-instance \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-network:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/network.yml \
-		--stack-name ecs-blue-green-demo-network \
+		--stack-name $(stack-family)-network \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-security-group:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/security-group.yml \
-		--stack-name ecs-blue-green-demo-security-group \
+		--stack-name $(stack-family)-security-group \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-load-balancer:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/load-balancer.yml \
-		--stack-name ecs-blue-green-demo-load-balancer \
+		--stack-name $(stack-family)-load-balancer \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-ecs-cluster:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/ecs-cluster.yml \
-		--stack-name ecs-blue-green-demo-ecs-cluster \
+		--stack-name $(stack-family)-ecs-cluster \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-ecs-ecr:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/ecs-ecr.yml \
-		--stack-name ecs-blue-green-demo-ecs-ecr \
+		--stack-name $(stack-family)-ecs-ecr \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-ecs-service:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/ecs-service.yml \
-		--stack-name ecs-blue-green-demo-ecs-service \
+		--stack-name $(stack-family)-ecs-service \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--no-fail-on-empty-changeset
 
 push-docker-images:
 	aws --profile $(profile) ecr get-login-password --region $(region) | docker login --username AWS --password-stdin $(account).dkr.ecr.$(region).amazonaws.com
-	docker build -t ecs-blue-green-demo/php-fpm -f aws/ecs/app-service/app/Dockerfile .
-	docker tag ecs-blue-green-demo/php-fpm:latest $(account).dkr.ecr.$(region).amazonaws.com/ecs-blue-green-demo/php-fpm:latest
-	docker push $(account).dkr.ecr.$(region).amazonaws.com/ecs-blue-green-demo/php-fpm:latest
-	docker build -t ecs-blue-green-demo/nginx -f aws/ecs/app-service/nginx/Dockerfile .
-	docker tag ecs-blue-green-demo/nginx:latest $(account).dkr.ecr.$(region).amazonaws.com/ecs-blue-green-demo/nginx:latest
-	docker push $(account).dkr.ecr.$(region).amazonaws.com/ecs-blue-green-demo/nginx:latest
+	docker build -t $(stack-family)/php-fpm -f aws/ecs/app-service/php-fpm/Dockerfile .
+	docker tag $(stack-family)/php-fpm:latest $(account).dkr.ecr.$(region).amazonaws.com/$(stack-family)/php-fpm:latest
+	docker push $(account).dkr.ecr.$(region).amazonaws.com/$(stack-family)/php-fpm:latest
+	docker build -t $(stack-family)/nginx -f aws/ecs/app-service/nginx/Dockerfile .
+	docker tag $(stack-family)/nginx:latest $(account).dkr.ecr.$(region).amazonaws.com/$(stack-family)/nginx:latest
+	docker push $(account).dkr.ecr.$(region).amazonaws.com/$(stack-family)/nginx:latest
 
 deploy-secrets-github:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/secrets-github.yml \
-		--stack-name ecs-blue-green-demo-secrets-github \
-		--parameter-overrides AccessToken=$(access-token) \
+		--stack-name $(stack-family)-secrets-github \
+		--parameter-overrides StackFamily=$(stack-family) AccessToken=$(access-token) \
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-pipeline:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/pipeline.yml \
-		--stack-name ecs-blue-green-demo-pipeline \
+		--stack-name $(stack-family)-pipeline \
+		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--no-fail-on-empty-changeset
 
 deploy-code-deploy-app:
 	aws --profile $(profile) deploy create-application \
-		--application-name ecs-blue-green-demo-app \
+		--application-name $(stack-family)-app \
 		--compute-platform ECS
 
 deploy-code-deploy-group:
