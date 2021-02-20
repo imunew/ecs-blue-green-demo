@@ -65,13 +65,17 @@ deploy-ecs-service:
 		--no-fail-on-empty-changeset
 
 push-docker-images:
-	aws --profile $(profile) ecr get-login-password --region $(region) | docker login --username AWS --password-stdin $(account).dkr.ecr.$(region).amazonaws.com
+	make cache-account-id profile=$(profile)
+	$(eval account-id := $(shell cat .cache/account-id.txt))
+	make cache-region profile=$(profile)
+	$(eval region := $(shell cat .cache/region.txt))
+	aws --profile $(profile) ecr get-login-password --region $(region) | docker login --username AWS --password-stdin $(account-id).dkr.ecr.$(region).amazonaws.com
 	docker build -t $(stack-family)/php-fpm -f aws/ecs/app-service/php-fpm/Dockerfile .
-	docker tag $(stack-family)/php-fpm:latest $(account).dkr.ecr.$(region).amazonaws.com/$(stack-family)/php-fpm:latest
-	docker push $(account).dkr.ecr.$(region).amazonaws.com/$(stack-family)/php-fpm:latest
+	docker tag $(stack-family)/php-fpm:latest $(account-id).dkr.ecr.$(region).amazonaws.com/$(stack-family)/php-fpm:latest
+	docker push $(account-id).dkr.ecr.$(region).amazonaws.com/$(stack-family)/php-fpm:latest
 	docker build -t $(stack-family)/nginx -f aws/ecs/app-service/nginx/Dockerfile .
-	docker tag $(stack-family)/nginx:latest $(account).dkr.ecr.$(region).amazonaws.com/$(stack-family)/nginx:latest
-	docker push $(account).dkr.ecr.$(region).amazonaws.com/$(stack-family)/nginx:latest
+	docker tag $(stack-family)/nginx:latest $(account-id).dkr.ecr.$(region).amazonaws.com/$(stack-family)/nginx:latest
+	docker push $(account-id).dkr.ecr.$(region).amazonaws.com/$(stack-family)/nginx:latest
 
 deploy-secrets-github:
 	aws --profile $(profile) cloudformation deploy \
@@ -81,10 +85,10 @@ deploy-secrets-github:
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
-deploy-pipeline:
+deploy-code-deploy:
 	aws --profile $(profile) cloudformation deploy \
-		--template ./aws/cloud-formation/pipeline.yml \
-		--stack-name $(stack-family)-pipeline \
+		--template ./aws/cloud-formation/code-deploy.yml \
+		--stack-name $(stack-family)-code-deploy \
 		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--no-fail-on-empty-changeset
@@ -95,9 +99,45 @@ deploy-code-deploy-app:
 		--compute-platform ECS
 
 deploy-code-deploy-group:
-	cat aws/cloud-formation/codedeploy-group.json | \
+	make cache-listener-arn profile=$(profile)
+	make cache-deploy-role-arn profile=$(profile)
+	$(eval listener-arn := $(shell cat .cache/listener-arn.txt))
+	$(eval deploy-role-arn := $(shell cat .cache/deploy-role-arn.txt))
+	cat aws/cloud-formation/code-deploy-group.json | \
 		sed -e "s!<LISTENER_ARN>!$(listener-arn)!g" -e "s!<DEPLOY_ROLE_ARN>!$(deploy-role-arn)!g" \
-		> codedeploy-group.json
+		> .cache/code-deploy-group.json
 	aws --profile $(profile) deploy create-deployment-group \
-		--cli-input-json file://codedeploy-group.json
-	rm -f codedeploy-group.json
+		--cli-input-json file://.cache/code-deploy-group.json
+
+deploy-pipeline:
+	aws --profile $(profile) cloudformation deploy \
+		--template ./aws/cloud-formation/pipeline.yml \
+		--stack-name $(stack-family)-pipeline \
+		--parameter-overrides StackFamily=$(stack-family) \
+		--capabilities CAPABILITY_NAMED_IAM \
+		--no-fail-on-empty-changeset
+
+cache-account-id:
+	aws --profile=$(profile) sts get-caller-identity \
+		--query 'Account' | tr -d '"' > .cache/account-id.txt
+
+cache-region:
+	aws --profile=$(profile) configure get region | true > .cache/region.txt
+	if [ ! -s .cache/region.txt ]; then aws configure get region > .cache/region.txt; fi
+	if [ ! -s .cache/region.txt ]; then echo $(region) > .cache/region.txt; fi
+
+cache-listener-arn:
+	aws --profile=$(profile) cloudformation describe-stack-resource \
+		--stack-name=$(stack-family)-load-balancer \
+		--logical-resource-id=ListenerHTTP \
+		--query 'StackResourceDetail.PhysicalResourceId' | tr -d '"' > .cache/listener-arn.txt
+
+cache-deploy-role-arn:
+	make cache-account-id profile=$(profile)
+	aws --profile=$(profile) cloudformation describe-stack-resource \
+		--stack-name=$(stack-family)-code-deploy \
+		--logical-resource-id=DeployRole \
+		--query 'StackResourceDetail.PhysicalResourceId' | tr -d '"' > .cache/deploy-role-name.txt
+	$(eval account-id := $(shell cat .cache/account-id.txt))
+	$(eval deploy-role := $(shell cat .cache/deploy-role-name.txt))
+	echo 'arn:aws:iam::$(account-id):role/$(deploy-role)' > .cache/deploy-role-arn.txt

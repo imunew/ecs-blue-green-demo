@@ -19,7 +19,7 @@ $ make deploy-load-balancer profile=$(profile)
 
 ```bash
 $ make deploy-ecs-ecr profile=$(profile)
-$ make push-docker-images profile=$(profile) region=$(region) account=$(account) 
+$ make push-docker-images profile=$(profile) 
 ```
 
 ### Create `ECS` cluster and service
@@ -36,7 +36,7 @@ $ make deploy-secrets-github profile=$(profile) access-token=$(access-token)
 ### Create CodeDeploy application and deploy group
 ```bash
 $ make deploy-code-deploy-app profile=$(profile)
-$ make deploy-code-deploy-group profile=$(profile) listener-arn=$(listener-arn) deploy-role-arn=$(deploy-role-arn)
+$ make deploy-code-deploy-group profile=$(profile)
 ```
 
 ### Create `CodePipeline`
