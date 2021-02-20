@@ -7,7 +7,7 @@ services:
       dockerfile: ./local/docker/php-fpm/Dockerfile
     volumes:
       - ./app:/var/www/app:cached
-      - ./local/docker/app/etc/zz-www.conf:/usr/local/etc/php-fpm.d/zz-www.conf
+      - ./local/docker/php-fpm/etc/zz-www.conf:/usr/local/etc/php-fpm.d/zz-www.conf
       - uds:/var/run
     working_dir: /var/www/app
 
