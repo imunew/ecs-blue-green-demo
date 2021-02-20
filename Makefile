@@ -118,15 +118,18 @@ deploy-pipeline:
 		--no-fail-on-empty-changeset
 
 cache-account-id:
+	mkdir -p .cache
 	aws --profile=$(profile) sts get-caller-identity \
 		--query 'Account' | tr -d '"' > .cache/account-id.txt
 
 cache-region:
+	mkdir -p .cache
 	aws --profile=$(profile) configure get region | true > .cache/region.txt
 	if [ ! -s .cache/region.txt ]; then aws configure get region > .cache/region.txt; fi
 	if [ ! -s .cache/region.txt ]; then echo $(region) > .cache/region.txt; fi
 
 cache-listener-arn:
+	mkdir -p .cache
 	aws --profile=$(profile) cloudformation describe-stack-resource \
 		--stack-name=$(stack-family)-load-balancer \
 		--logical-resource-id=ListenerHTTP \
