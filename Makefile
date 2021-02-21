@@ -92,6 +92,8 @@ deploy-code-deploy:
 		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--no-fail-on-empty-changeset
+	make deploy-code-deploy-app profile=$(profile)
+	make deploy-code-deploy-group profile=$(profile)
 
 deploy-code-deploy-app:
 	aws --profile $(profile) deploy create-application \
@@ -109,10 +111,10 @@ deploy-code-deploy-group:
 	aws --profile $(profile) deploy create-deployment-group \
 		--cli-input-json file://.cache/code-deploy-group.json
 
-deploy-pipeline:
+deploy-code-pipeline:
 	aws --profile $(profile) cloudformation deploy \
-		--template ./aws/cloud-formation/pipeline.yml \
-		--stack-name $(stack-family)-pipeline \
+		--template ./aws/cloud-formation/code-pipeline.yml \
+		--stack-name $(stack-family)-code-pipeline \
 		--parameter-overrides StackFamily=$(stack-family) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--no-fail-on-empty-changeset

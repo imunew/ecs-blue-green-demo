@@ -35,13 +35,12 @@ $ make deploy-secrets-github profile=$(profile) access-token=$(access-token)
 
 ### Create CodeDeploy application and deploy group
 ```bash
-$ make deploy-code-deploy-app profile=$(profile)
-$ make deploy-code-deploy-group profile=$(profile)
+$ make deploy-code-deploy profile=$(profile)
 ```
 
 ### Create `CodePipeline`
 ```bash
-$ make deploy-pipeline profile=$(profile)
+$ make deploy-code-pipeline profile=$(profile)
 ```
 
 ## Screenshots
