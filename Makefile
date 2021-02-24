@@ -64,10 +64,8 @@ deploy-ecs-service:
 		--capabilities CAPABILITY_NAMED_IAM \
 		--no-fail-on-empty-changeset
 
-push-docker-images:
-	make cache-account-id profile=$(profile)
+push-docker-images: cache-account-id cache-region
 	$(eval account-id := $(shell cat .cache/account-id.txt))
-	make cache-region profile=$(profile)
 	$(eval region := $(shell cat .cache/region.txt))
 	aws --profile $(profile) ecr get-login-password --region $(region) | docker login --username AWS --password-stdin $(account-id).dkr.ecr.$(region).amazonaws.com
 	docker build -t $(stack-family)/php-fpm -f aws/ecs/app-service/php-fpm/Dockerfile .
@@ -100,9 +98,7 @@ deploy-code-deploy-app:
 		--application-name $(stack-family)-app \
 		--compute-platform ECS
 
-deploy-code-deploy-group:
-	make cache-listener-arn profile=$(profile)
-	make cache-deploy-role-arn profile=$(profile)
+deploy-code-deploy-group: cache-listener-arn cache-deploy-role-arn
 	$(eval listener-arn := $(shell cat .cache/listener-arn.txt))
 	$(eval deploy-role-arn := $(shell cat .cache/deploy-role-arn.txt))
 	cat aws/cloud-formation/code-deploy-group.json | \
@@ -126,7 +122,7 @@ cache-account-id:
 
 cache-region:
 	mkdir -p .cache
-	aws --profile=$(profile) configure get region | true > .cache/region.txt
+	aws --profile=$(profile) configure get region > .cache/region.txt
 	if [ ! -s .cache/region.txt ]; then aws configure get region > .cache/region.txt; fi
 	if [ ! -s .cache/region.txt ]; then echo $(region) > .cache/region.txt; fi
 
@@ -137,12 +133,13 @@ cache-listener-arn:
 		--logical-resource-id=ListenerHTTP \
 		--query 'StackResourceDetail.PhysicalResourceId' | tr -d '"' > .cache/listener-arn.txt
 
-cache-deploy-role-arn:
-	make cache-account-id profile=$(profile)
+cache-deploy-role-name:
 	aws --profile=$(profile) cloudformation describe-stack-resource \
 		--stack-name=$(stack-family)-code-deploy \
 		--logical-resource-id=DeployRole \
 		--query 'StackResourceDetail.PhysicalResourceId' | tr -d '"' > .cache/deploy-role-name.txt
+
+cache-deploy-role-arn: cache-account-id cache-deploy-role-name
 	$(eval account-id := $(shell cat .cache/account-id.txt))
 	$(eval deploy-role := $(shell cat .cache/deploy-role-name.txt))
 	echo 'arn:aws:iam::$(account-id):role/$(deploy-role)' > .cache/deploy-role-arn.txt
