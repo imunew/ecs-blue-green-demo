@@ -1,4 +1,5 @@
 stack-family=ecs-blue-green-demo
+github-owner=imunew
 
 deploy-vpc-subnet:
 	aws --profile $(profile) cloudformation deploy \
@@ -111,7 +112,7 @@ deploy-code-pipeline:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/code-pipeline.yml \
 		--stack-name $(stack-family)-code-pipeline \
-		--parameter-overrides StackFamily=$(stack-family) \
+		--parameter-overrides StackFamily=$(stack-family) GitHubOwner=$(github-owner) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--no-fail-on-empty-changeset
 
