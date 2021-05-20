@@ -1,11 +1,18 @@
 version: 0.2
 
+env:
+  secrets-manager:
+    DOCKER_USERNAME: "ecs-blue-green-demo-secrets-docker:username"
+    DOCKER_PASSWORD: "ecs-blue-green-demo-secrets-docker:access-token"
+
 phases:
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
       - aws --version
       - aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+      - echo Logging in to Docker Hub...
+      - echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin
       - IMAGE_NAME_PHP_FPM=php-fpm
       - IMAGE_NAME_NGINX=nginx
       - REPOSITORY_URI_PHP_FPM=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${PROJECT_NAMESPACE}/${IMAGE_NAME_PHP_FPM}

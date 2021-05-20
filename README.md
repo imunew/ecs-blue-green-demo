@@ -33,6 +33,11 @@ $ make deploy-ecs-service profile=$(profile)
 $ make deploy-secrets-github profile=$(profile) access-token=$(access-token)
 ```
 
+### Register `Docker` username and private access token into `Secrets Manager`
+```bash
+$ make deploy-secrets-docker profile=$(profile) username=$(username) access-token=$(access-token)
+```
+
 ### Create CodeDeploy application and deploy group
 ```bash
 $ make deploy-code-deploy profile=$(profile)

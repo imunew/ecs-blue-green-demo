@@ -83,6 +83,14 @@ deploy-secrets-github:
 		--capabilities CAPABILITY_IAM \
 		--no-fail-on-empty-changeset
 
+deploy-secrets-docker:
+	aws --profile $(profile) cloudformation deploy \
+		--template ./aws/cloud-formation/secrets-docker.yml \
+		--stack-name $(stack-family)-secrets-docker \
+		--parameter-overrides StackFamily=$(stack-family) Username=$(username) AccessToken=$(access-token) \
+		--capabilities CAPABILITY_IAM \
+		--no-fail-on-empty-changeset
+
 deploy-code-deploy:
 	aws --profile $(profile) cloudformation deploy \
 		--template ./aws/cloud-formation/code-deploy.yml \
